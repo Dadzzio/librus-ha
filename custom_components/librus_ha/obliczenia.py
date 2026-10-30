@@ -15,7 +15,7 @@ TYPY_DOMYSLNE: dict[str, dict[str, Any]] = {
     "1": {"skrot": "nb", "nazwa": "nieobecność", "obecnosc": False},
     "2": {"skrot": "sp", "nazwa": "spóźnienie", "obecnosc": True},
     "3": {"skrot": "u", "nazwa": "nieobecność uspr.", "obecnosc": False},
-    "4": {"skrot": "zw", "nazwa": "zwolnienie", "obecnosc": False},
+    "4": {"skrot": "zw", "nazwa": "zwolnienie", "obecnosc": True},
     "100": {"skrot": "ob", "nazwa": "obecność", "obecnosc": True},
     "1266": {"skrot": "wy", "nazwa": "wycieczka", "obecnosc": True},
 }
@@ -70,7 +70,10 @@ def typy_frekwencji(dane: dict) -> dict[str, dict[str, Any]]:
         skrot = (t.get("Short") or "").strip().lower()
         obecnosc = t.get("IsPresenceKind")
         if obecnosc is None:
-            obecnosc = skrot in ("ob", "sp", "wy")
+            obecnosc = skrot in ("ob", "sp", "wy", "zw")
+        if skrot == "zw":
+            # w szkole zwolnienie liczy się jako obecność na lekcji
+            obecnosc = True
         typy[str(t["Id"])] = {
             "skrot": skrot,
             "nazwa": (t.get("Name") or skrot).strip(),
@@ -107,12 +110,12 @@ def _dodaj(licznik: dict[str, Any], typ: dict[str, Any]) -> None:
         licznik["obecnosci"] += 1
         if skrot == "sp":
             licznik["spoznienia"] += 1
+        elif skrot == "zw":
+            licznik["zwolnienia"] += 1
     elif skrot == "nb":
         licznik["nieusprawiedliwione"] += 1
     elif skrot == "u":
         licznik["usprawiedliwione"] += 1
-    elif skrot == "zw":
-        licznik["zwolnienia"] += 1
     else:
         licznik["inne_nieobecnosci"] += 1
 
@@ -126,9 +129,9 @@ def _podsumuj(licznik: dict[str, Any]) -> dict[str, Any]:
         + licznik["inne_nieobecnosci"]
     )
     wynik["procent"] = round(100 * ob / lekcji, 1) if lekcji else None
-    # zwolnienie (np. z WF) nie jest wtedy ani obecnością, ani nieobecnością
+    # zwolnienie liczy się jako obecność; tu procent z lekcji bez zwolnień
     wynik["procent_bez_zwolnien"] = (
-        round(100 * ob / (lekcji - zw), 1) if lekcji - zw > 0 else None
+        round(100 * (ob - zw) / (lekcji - zw), 1) if lekcji - zw > 0 else None
     )
     # > 0: tyle lekcji z rzędu można jeszcze opuścić i mieć >= 50%;
     # < 0: tyle obecności z rzędu brakuje do 50%

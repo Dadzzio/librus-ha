@@ -25,8 +25,8 @@ Hasło zostaje w konfiguracji HA (`.storage/core.config_entries`), nie ma go w r
 | `sensor.szkola_srednia_<przedmiot>` | średnia ważona z przedmiotu | `oceny_tekst`, `oceny` (ocena, waga, kategoria, data), `srednia_rok`, `proponowana_semestralna`, `semestralna`, `proponowana_roczna`, `roczna` |
 
 **Zasady liczenia**
-- Obecność = typy, które Librus oznacza jako obecność (`IsPresenceKind`): obecność, spóźnienie, wycieczka…
-- Zwolnienie (`zw`) nie jest obecnością; `procent_bez_zwolnien` pomija zwolnienia w ogóle.
+- Obecność = typy, które Librus oznacza jako obecność (`IsPresenceKind`): obecność, spóźnienie, wycieczka… oraz zawsze zwolnienie (`zw`), bo szkoła liczy je jako obecność.
+- `procent_bez_zwolnien` to procent z lekcji bez zwolnień (zwolnienia pominięte w liczniku i mianowniku).
 - `zapas_do_50` > 0: tyle lekcji z rzędu można opuścić i zostać ≥ 50%; < 0: tyle obecności z rzędu brakuje do 50%.
 - Średnia ważona tylko z ocen 1–6 z kategorii liczonych do średniej; `+` = +0,5, `-` = −0,25 (zmienisz w opcjach).
 

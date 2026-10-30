@@ -30,7 +30,7 @@ DANE = {
             {"Id": 1, "Name": "nieobecność", "Short": "nb", "IsPresenceKind": False},
             {"Id": 2, "Name": "spóźnienie", "Short": "sp", "IsPresenceKind": True},
             {"Id": 3, "Name": "nieobecność uspr.", "Short": "u", "IsPresenceKind": False},
-            {"Id": 4, "Name": "zwolnienie", "Short": "zw", "IsPresenceKind": False},
+            {"Id": 4, "Name": "zwolnienie", "Short": "zw", "IsPresenceKind": False},  # i tak obecność
             {"Id": 100, "Name": "obecność", "Short": "ob", "IsPresenceKind": True},
         ]
     },
@@ -89,9 +89,10 @@ class TestFrekwencja(unittest.TestCase):
         w = self.f["przedmioty"]["wychowanie_fizyczne"]
         self.assertEqual(w["zwolnienia"], 2)
         self.assertEqual(w["nieusprawiedliwione"], 1)
-        self.assertEqual(w["procent"], 25.0)
+        self.assertEqual(w["obecnosci"], 3)
+        self.assertEqual(w["procent"], 75.0)
         self.assertEqual(w["procent_bez_zwolnien"], 50.0)
-        self.assertEqual(w["zapas_do_50"], -2)
+        self.assertEqual(w["zapas_do_50"], 2)
 
     def test_razem_i_rok(self):
         self.assertEqual(self.f["razem"]["lekcji"], 14)
