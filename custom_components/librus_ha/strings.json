@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Librus Synergia",
+        "description": "Librus Synergia login and password.",
+        "data": {
+          "username": "Login",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Librus re-authentication",
+        "description": "Librus rejected the password for {login}.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid login or password.",
+      "cannot_connect": "Cannot connect to Librus."
+    },
+    "abort": {
+      "already_configured": "Account already configured.",
+      "reauth_successful": "Re-authenticated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Librus options",
+        "data": {
+          "interwal_dzien": "Polling on school days 7–17 (min)",
+          "interwal_noc": "Polling at other times (min)",
+          "plus": "Plus value",
+          "minus": "Minus value"
+        }
+      }
+    }
+  }
+}

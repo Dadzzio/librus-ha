@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Librus Synergia",
+        "description": "Login i hasło do Librus Synergia (to samo co na synergia.librus.pl).",
+        "data": {
+          "username": "Login",
+          "password": "Hasło"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Librus – ponowne logowanie",
+        "description": "Librus odrzucił hasło dla {login}. Podaj aktualne hasło.",
+        "data": {
+          "password": "Hasło"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Zły login lub hasło.",
+      "cannot_connect": "Nie udało się połączyć z Librusem (przerwa techniczna albo brak sieci)."
+    },
+    "abort": {
+      "already_configured": "To konto jest już dodane.",
+      "reauth_successful": "Zalogowano ponownie."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Librus – opcje",
+        "data": {
+          "interwal_dzien": "Odpytywanie w dni robocze 7–17 (min)",
+          "interwal_noc": "Odpytywanie w pozostałym czasie (min)",
+          "plus": "Wartość plusa (4+ = 4 + x)",
+          "minus": "Wartość minusa (4- = 4 − x)"
+        }
+      }
+    }
+  }
+}
