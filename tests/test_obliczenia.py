@@ -130,6 +130,27 @@ class TestOceny(unittest.TestCase):
         self.assertEqual(len(m["oceny"]), 4)
         self.assertEqual(obliczenia.srednia_ogolna(o), round((3.88 + 6.0) / 2, 2))
 
+    def test_szkola_wylaczyla_srednie(self):
+        dane = {
+            **DANE,
+            "grade_categories": {
+                "Categories": [
+                    {"Id": 1, "Name": "sprawdzian", "CountToTheAverage": False},
+                    {"Id": 2, "Name": "kartkówka", "CountToTheAverage": False},
+                ]
+            },
+            "grades": {
+                "Grades": [
+                    {"Id": 1, "Subject": {"Id": 10}, "Category": {"Id": 1}, "Grade": "3", "Semester": 1},
+                    {"Id": 2, "Subject": {"Id": 10}, "Category": {"Id": 2}, "Grade": "3+", "Semester": 1},
+                    {"Id": 3, "Subject": {"Id": 10}, "Category": {"Id": 2}, "Grade": "0", "Semester": 1},
+                ]
+            },
+        }
+        m = obliczenia.oceny(dane)["matematyka"]
+        self.assertEqual(m["srednia"], 3.25)  # "0" (brak oceny) pominięte
+        self.assertTrue(all(o["liczona"] for o in m["oceny"]))
+
     def test_slug(self):
         self.assertEqual(obliczenia.slug("Język polski"), "jezyk_polski")
         self.assertEqual(obliczenia.slug("bezpieczeństwo i Internet wszechrzeczy"), "bezpieczenstwo_i_internet_wszechrzeczy")

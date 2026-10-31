@@ -221,6 +221,11 @@ def oceny(
     kategorie = {
         str(k["Id"]): k for k in _lista(dane.get("grade_categories"), "Categories") if "Id" in k
     }
+    # gdy szkoła wyłączyła średnie, żadna kategoria nie jest liczona do średniej –
+    # wtedy liczymy wszystkie (jak LibrusPro)
+    srednie_wylaczone = not any(
+        k.get("CountToTheAverage") is True for k in kategorie.values()
+    )
     wynik: dict[str, dict[str, Any]] = {}
 
     for g in _lista(dane.get("grades"), "Grades"):
@@ -257,9 +262,9 @@ def oceny(
 
         kat = kategorie.get(_id(g.get("Category")) or "", {})
         waga = kat.get("Weight")
-        liczona = kat.get("CountToTheAverage", True) is not False and g.get(
-            "IsConstituent", True
-        ) is not False
+        liczona = g.get("IsConstituent", True) is not False and (
+            srednie_wylaczone or kat.get("CountToTheAverage", True) is not False
+        )
         ocena = {
             "id": _id(g.get("Id")),
             "ocena": tekst,
