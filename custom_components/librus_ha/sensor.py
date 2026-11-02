@@ -7,13 +7,11 @@ from typing import Any
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import LibrusConfigEntry
-from .const import DOMAIN
 from .coordinator import LibrusKoordynator
+from .entity import LibrusEncja
 
 POLA_FREKWENCJI = (
     "lekcji",
@@ -57,22 +55,7 @@ async def async_setup_entry(
     entry.async_on_unload(koordynator.async_add_listener(_dodaj_przedmioty))
 
 
-class LibrusEncja(CoordinatorEntity[LibrusKoordynator], SensorEntity):
-    _attr_has_entity_name = True
-
-    def __init__(self, koordynator: LibrusKoordynator, klucz: str) -> None:
-        super().__init__(koordynator)
-        entry = koordynator.config_entry
-        self._attr_unique_id = f"{entry.entry_id}_{klucz}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name="Szkoła",
-            manufacturer="Librus Synergia",
-            entry_type=DeviceEntryType.SERVICE,
-        )
-
-
-class LibrusFrekwencja(LibrusEncja):
+class LibrusFrekwencja(LibrusEncja, SensorEntity):
     _attr_name = "Frekwencja"
     _attr_icon = "mdi:account-check"
     _attr_native_unit_of_measurement = PERCENTAGE
@@ -111,7 +94,7 @@ class LibrusFrekwencja(LibrusEncja):
         }
 
 
-class LibrusFrekwencjaPrzedmiotu(LibrusEncja):
+class LibrusFrekwencjaPrzedmiotu(LibrusEncja, SensorEntity):
     _attr_icon = "mdi:book-account"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -153,7 +136,7 @@ class LibrusFrekwencjaPrzedmiotu(LibrusEncja):
         }
 
 
-class LibrusSrednia(LibrusEncja):
+class LibrusSrednia(LibrusEncja, SensorEntity):
     _attr_name = "Średnia"
     _attr_icon = "mdi:school"
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -178,7 +161,7 @@ class LibrusSrednia(LibrusEncja):
         }
 
 
-class LibrusSredniaPrzedmiotu(LibrusEncja):
+class LibrusSredniaPrzedmiotu(LibrusEncja, SensorEntity):
     _attr_icon = "mdi:numeric"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 2

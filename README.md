@@ -22,6 +22,7 @@ Hasło zostaje w konfiguracji HA (`.storage/core.config_entries`), nie ma go w r
 | `sensor.szkola_frekwencja` | % obecności w bieżącym semestrze | `lekcji`, `obecnosci`, `nieobecnosci`, `nieusprawiedliwione`, `usprawiedliwione`, `zwolnienia`, `spoznienia`, `procent_bez_zwolnien`, `zapas_do_50`, `procent_rok`, `przedmioty` (tabela), `ostatnie_wpisy` |
 | `sensor.szkola_frekwencja_<przedmiot>` | % obecności z przedmiotu | jak wyżej + `ostatnie_wpisy` z przedmiotu |
 | `sensor.szkola_srednia` | średnia ze średnich przedmiotów | `przedmioty` |
+| `button.szkola_odswiez` | przycisk: od razu pobiera dane z Librusa | – |
 | `sensor.szkola_srednia_<przedmiot>` | średnia ważona z przedmiotu | `oceny_tekst`, `oceny` (ocena, waga, kategoria, data), `srednia_rok`, `proponowana_semestralna`, `semestralna`, `proponowana_roczna`, `roczna` |
 
 **Zasady liczenia**

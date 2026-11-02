@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .coordinator import LibrusKoordynator
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.BUTTON, Platform.SENSOR]
 
 type LibrusConfigEntry = ConfigEntry[LibrusKoordynator]
 
