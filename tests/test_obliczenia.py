@@ -113,6 +113,37 @@ class TestFrekwencja(unittest.TestCase):
         self.assertEqual(p["procent"], 50.0)
 
 
+class TestPrognoza(unittest.TestCase):
+    def test_mozna_opuscic(self):
+        from datetime import date
+
+        dane = {
+            **DANE,
+            "classes": {"Class": {"Id": 1, "EndFirstSemester": "2026-10-16", "EndSchoolYear": "2026-10-30"}},
+            "free_days": {"SchoolFreeDays": [{"DateFrom": "2026-10-12", "DateTo": "2026-10-13"}]},
+        }
+        f = obliczenia.frekwencja(dane)
+        # matematyka: 10 lekcji w 1 tygodniu (wszystkie wpisy z 1–3.10) => 10/tydzień
+        self.assertEqual(f["przedmioty"]["matematyka"]["lekcji_tygodniowo"], 10)
+        p = obliczenia.prognoza(dane, f, date(2026, 10, 9))
+        # 12–16.10: 5 dni roboczych − 2 wolne = 3 dni nauki => 6 lekcji
+        self.assertEqual(p["dni_nauki_do_konca_semestru"], 3)
+        m = f["przedmioty"]["matematyka"]
+        self.assertEqual(m["pozostalo_lekcji_semestr"], 6)
+        # zapas 4 (7 obecności z 10) + 6 pozostałych => (4 + 6) / 2 = 5
+        self.assertEqual(m["mozna_opuscic_semestr"], 5)
+        # rok: 19–30.10 = 10 dni nauki więcej => 3+10 = 13 dni, 26 lekcji; rok ma też wpis z sem. 0
+        self.assertEqual(p["dni_nauki_do_konca_roku"], 13)
+        self.assertEqual(m["rok"]["lekcji"], 11)
+        self.assertEqual(m["mozna_opuscic_rok"], (2 * 7 - 11 + 26) // 2)
+
+    def test_wielkanoc(self):
+        from datetime import date
+
+        self.assertEqual(obliczenia._wielkanoc(2027), date(2027, 3, 28))
+        self.assertEqual(obliczenia._wielkanoc(2026), date(2026, 4, 5))
+
+
 class TestOceny(unittest.TestCase):
     def test_wartosc(self):
         self.assertEqual(obliczenia.wartosc_oceny("4+"), 4.5)

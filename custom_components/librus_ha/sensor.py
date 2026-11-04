@@ -23,6 +23,11 @@ POLA_FREKWENCJI = (
     "spoznienia",
     "procent_bez_zwolnien",
     "zapas_do_50",
+    "lekcji_tygodniowo",
+    "pozostalo_lekcji_semestr",
+    "mozna_opuscic_semestr",
+    "pozostalo_lekcji_rok",
+    "mozna_opuscic_rok",
 )
 
 
@@ -79,7 +84,12 @@ class LibrusFrekwencja(LibrusEncja, SensorEntity):
         razem = f.get("razem", {})
         przedmioty = sorted(
             (
-                {"przedmiot": p["nazwa"], "procent": p["procent"], **{k: p[k] for k in POLA_FREKWENCJI}}
+                {
+                    "przedmiot": p["nazwa"],
+                    "procent": p["procent"],
+                    "procent_rok": p["rok"]["procent"],
+                    **{k: p.get(k) for k in POLA_FREKWENCJI},
+                }
                 for p in f.get("przedmioty", {}).values()
             ),
             key=lambda p: p["procent"] if p["procent"] is not None else 101,
@@ -88,6 +98,7 @@ class LibrusFrekwencja(LibrusEncja, SensorEntity):
             "semestr": f.get("semestr"),
             **{k: razem.get(k) for k in POLA_FREKWENCJI},
             "procent_rok": f.get("rok", {}).get("procent"),
+            **f.get("prognoza", {}),
             "przedmioty": przedmioty,
             "ostatnie_wpisy": f.get("wpisy", [])[:15],
             "aktualizacja": (self.coordinator.data or {}).get("aktualizacja"),
@@ -132,6 +143,8 @@ class LibrusFrekwencjaPrzedmiotu(LibrusEncja, SensorEntity):
         return {
             "przedmiot": p.get("nazwa"),
             **{k: p.get(k) for k in POLA_FREKWENCJI},
+            "procent_rok": p.get("rok", {}).get("procent"),
+            "lekcji_rok": p.get("rok", {}).get("lekcji"),
             "ostatnie_wpisy": wpisy[:10],
         }
 

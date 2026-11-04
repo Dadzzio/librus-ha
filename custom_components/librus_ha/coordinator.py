@@ -75,6 +75,7 @@ class LibrusKoordynator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(str(ex)) from ex
 
         frek = obliczenia.frekwencja(surowe)
+        frek["prognoza"] = obliczenia.prognoza(surowe, frek, dt_util.now().date())
         oceny = obliczenia.oceny(
             surowe,
             semestr=frek["semestr"],

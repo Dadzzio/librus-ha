@@ -6,8 +6,10 @@ Wejście to słowniki zwrócone przez LibrusApi.pobierz_wszystko(), np.
 
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
+from datetime import date, timedelta
 from typing import Any
 
 # Gdy Attendances/Types jest niedostępne – typy standardowe Librusa.
@@ -140,7 +142,7 @@ def _podsumuj(licznik: dict[str, Any]) -> dict[str, Any]:
 
 
 def frekwencja(dane: dict, semestr: int | None = None) -> dict[str, Any]:
-    """Frekwencja ogółem i per przedmiot dla semestru (domyślnie bieżącego)."""
+    """Frekwencja ogółem i per przedmiot dla semestru (domyślnie bieżącego) i całego roku."""
     semestr = semestr or biezacy_semestr(dane)
     typy = typy_frekwencji(dane)
     nazwy = przedmioty(dane)
@@ -149,20 +151,27 @@ def frekwencja(dane: dict, semestr: int | None = None) -> dict[str, Any]:
     razem = _pusty_licznik()
     rok = _pusty_licznik()
     per_przedmiot: dict[str, dict[str, Any]] = {}
+    per_przedmiot_rok: dict[str, dict[str, Any]] = {}
+    # tygodnie (ISO), w których w semestrze były lekcje – do liczenia lekcji na tydzień
+    tygodnie: set[tuple[int, int]] = set()
     wpisy: list[dict[str, Any]] = []
 
     for a in _lista(dane.get("attendances"), "Attendances"):
         typ = typy.get(_id(a.get("Type")) or "", {"skrot": "?", "nazwa": "?", "obecnosc": False})
-        _dodaj(rok, typ)
-        if str(a.get("Semester")) != str(semestr):
-            continue
         id_przedmiotu = lekcje.get(_id(a.get("Lesson")) or "")
         nazwa = nazwy.get(id_przedmiotu or "", NIEZNANY_PRZEDMIOT)
         klucz = slug(nazwa)
+        _dodaj(rok, typ)
+        _dodaj(per_przedmiot_rok.setdefault(klucz, _pusty_licznik()), typ)
+        if str(a.get("Semester")) != str(semestr):
+            continue
         if klucz not in per_przedmiot:
             per_przedmiot[klucz] = {"nazwa": nazwa, **_pusty_licznik()}
         _dodaj(per_przedmiot[klucz], typ)
         _dodaj(razem, typ)
+        dzien = _data(a.get("Date"))
+        if dzien:
+            tygodnie.add(dzien.isocalendar()[:2])
         if typ["skrot"] != "ob":
             wpisy.append(
                 {
@@ -177,14 +186,139 @@ def frekwencja(dane: dict, semestr: int | None = None) -> dict[str, Any]:
             )
 
     wpisy.sort(key=lambda w: (w["data"] or "", int(w["lekcja"] or 0)), reverse=True)
+    liczba_tygodni = len(tygodnie)
+    wynik_przedmioty = {}
+    for k, v in per_przedmiot.items():
+        nazwa = v.pop("nazwa")
+        rok_p = _podsumuj(per_przedmiot_rok[k])
+        wynik_przedmioty[k] = {
+            "nazwa": nazwa,
+            **_podsumuj(v),
+            "lekcji_tygodniowo": round(v["lekcji"] / liczba_tygodni, 2) if liczba_tygodni else None,
+            "rok": {x: rok_p[x] for x in ("lekcji", "obecnosci", "nieobecnosci", "procent", "zapas_do_50")},
+        }
     return {
         "semestr": semestr,
         "razem": _podsumuj(razem),
         "rok": _podsumuj(rok),
-        "przedmioty": {
-            k: {"nazwa": v.pop("nazwa"), **_podsumuj(v)} for k, v in per_przedmiot.items()
-        },
+        "przedmioty": wynik_przedmioty,
         "wpisy": wpisy,
+    }
+
+
+def _data(tekst: Any) -> date | None:
+    try:
+        return date.fromisoformat(str(tekst)[:10])
+    except ValueError:
+        return None
+
+
+def _wielkanoc(rok: int) -> date:
+    a, b, c = rok % 19, rok // 100, rok % 100
+    d, e = b // 4, b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = c // 4, c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    miesiac = (h + l - 7 * m + 114) // 31
+    dzien = (h + l - 7 * m + 114) % 31 + 1
+    return date(rok, miesiac, dzien)
+
+
+def _swieta(rok: int) -> set[date]:
+    """Dni ustawowo wolne w Polsce, które wypadają w roku szkolnym."""
+    wielkanoc = _wielkanoc(rok)
+    stale = [(1, 1), (1, 6), (5, 1), (5, 3), (11, 1), (11, 11), (12, 24), (12, 25), (12, 26)]
+    return {date(rok, m, d) for m, d in stale} | {
+        wielkanoc + timedelta(days=1),
+        wielkanoc + timedelta(days=60),  # Boże Ciało
+    }
+
+
+def dni_wolne(dane: dict) -> set[date]:
+    """Dni wolne szkoły z Librusa (SchoolFreeDays) – przerwy świąteczne, ferie, dni dyrektorskie."""
+    wolne: set[date] = set()
+    for d in _lista(dane.get("free_days"), "SchoolFreeDays"):
+        od, do = _data(d.get("DateFrom")), _data(d.get("DateTo") or d.get("DateFrom"))
+        if od and do:
+            while od <= do:
+                wolne.add(od)
+                od += timedelta(days=1)
+    return wolne
+
+
+def _ostatni_piatek(rok: int, miesiac: int) -> date:
+    d = (date(rok, miesiac + 1, 1) if miesiac < 12 else date(rok + 1, 1, 1)) - timedelta(days=1)
+    while d.weekday() != 4:
+        d -= timedelta(days=1)
+    return d
+
+
+def daty_konca(dane: dict, dzis: date) -> tuple[date, date]:
+    """(koniec 1. semestru, koniec roku szkolnego) z Librusa (Classes), inaczej typowe daty."""
+    rok_startu = dzis.year if dzis.month >= 9 else dzis.year - 1
+    klasy = _lista(dane.get("classes"), "Classes")
+    pojedyncza = (dane.get("classes") or {}).get("Class") if isinstance(dane.get("classes"), dict) else None
+    if isinstance(pojedyncza, dict):
+        klasy = [pojedyncza]
+    id_klasy = _id((((dane.get("me") or {}).get("Me") or {}).get("Class")))
+    klasa = next((k for k in klasy if _id(k.get("Id")) == id_klasy), klasy[0] if klasy else {})
+    koniec_sem = _data(klasa.get("EndFirstSemester")) or _ostatni_piatek(rok_startu + 1, 1)
+    koniec_roku = _data(klasa.get("EndSchoolYear")) or _ostatni_piatek(rok_startu + 1, 6)
+    return koniec_sem, koniec_roku
+
+
+def dni_nauki(od: date, do: date, wolne: set[date]) -> int:
+    """Dni z lekcjami w przedziale (od, do] – dni robocze bez świąt i dni wolnych szkoły."""
+    swieta = _swieta(od.year) | _swieta(do.year)
+    dzien, licznik = od + timedelta(days=1), 0
+    while dzien <= do:
+        if dzien.weekday() < 5 and dzien not in swieta and dzien not in wolne:
+            licznik += 1
+        dzien += timedelta(days=1)
+    return licznik
+
+
+def _mozna_opuscic(zapas: int, pozostalo: int) -> int:
+    # (obecności + pozostałe − k) / (lekcji + pozostałe) >= 50%  <=>  k <= (zapas + pozostałe) / 2
+    return math.floor((zapas + pozostalo) / 2)
+
+
+def prognoza(dane: dict, frek: dict[str, Any], dzis: date) -> dict[str, Any]:
+    """Dopisuje do frekwencji per przedmiot: ile lekcji zostało i ile można opuścić (>= 50%)."""
+    koniec_sem, koniec_roku = daty_konca(dane, dzis)
+    wolne = dni_wolne(dane)
+    z_librusa = bool(wolne)
+    if not z_librusa:
+        # brak SchoolFreeDays: przerwa świąteczna 23–31 grudnia + 2 tygodnie ferii
+        # w połowie lutego (dokładne ferie zależą od województwa)
+        rok = dzis.year if dzis.month >= 9 else dzis.year - 1
+        wolne = {date(rok, 12, d) for d in range(23, 32)}
+        ferie = date(rok + 1, 2, 2)
+        wolne |= {ferie + timedelta(days=i) for i in range(14)}
+    # w 2. semestrze koniec semestru = koniec roku
+    koniec_biez = koniec_sem if frek["semestr"] == 1 and dzis <= koniec_sem else koniec_roku
+    dni_sem = dni_nauki(dzis, koniec_biez, wolne)
+    dni_rok = dni_nauki(dzis, koniec_roku, wolne)
+    for p in frek["przedmioty"].values():
+        tyg = p.get("lekcji_tygodniowo")
+        if tyg is None:
+            continue
+        zostalo_sem = round(tyg * dni_sem / 5)
+        zostalo_rok = round(tyg * dni_rok / 5)
+        p["pozostalo_lekcji_semestr"] = zostalo_sem
+        p["mozna_opuscic_semestr"] = _mozna_opuscic(p["zapas_do_50"], zostalo_sem)
+        p["pozostalo_lekcji_rok"] = zostalo_rok
+        # do klasyfikacji rocznej liczą się lekcje z całego roku
+        p["mozna_opuscic_rok"] = _mozna_opuscic(p["rok"]["zapas_do_50"], zostalo_rok)
+    return {
+        "koniec_semestru": koniec_biez.isoformat(),
+        "koniec_roku": koniec_roku.isoformat(),
+        "dni_nauki_do_konca_semestru": dni_sem,
+        "dni_nauki_do_konca_roku": dni_rok,
+        "dni_wolne_z_librusa": z_librusa,
     }
 
 

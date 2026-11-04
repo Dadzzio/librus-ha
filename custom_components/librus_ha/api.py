@@ -26,6 +26,8 @@ ZASOBY: dict[str, tuple[str, bool]] = {
     "grades": ("Grades", False),
     "grade_categories": ("Grades/Categories", False),
     "me": ("Me", False),
+    "classes": ("Classes", False),
+    "free_days": ("SchoolFreeDays", False),
 }
 
 

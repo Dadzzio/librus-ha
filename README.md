@@ -28,6 +28,9 @@ Hasło zostaje w konfiguracji HA (`.storage/core.config_entries`), nie ma go w r
 **Zasady liczenia**
 - Obecność = typy, które Librus oznacza jako obecność (`IsPresenceKind`): obecność, spóźnienie, wycieczka… oraz zawsze zwolnienie (`zw`), bo szkoła liczy je jako obecność.
 - `procent_bez_zwolnien` to procent z lekcji bez zwolnień (zwolnienia pominięte w liczniku i mianowniku).
+- `lekcji_tygodniowo` – średnio z tygodni, w których w semestrze były lekcje.
+- `pozostalo_lekcji_semestr` / `pozostalo_lekcji_rok` – szacunek: lekcje tygodniowo × dni nauki do końca (dni robocze bez świąt i dni wolnych szkoły z `SchoolFreeDays`; daty końca z `Classes`, inaczej ostatni piątek stycznia/czerwca).
+- `mozna_opuscic_semestr` / `mozna_opuscic_rok` – ile lekcji jeszcze można opuścić i zostać ≥ 50% na koniec semestru / roku (rok liczony z lekcji obu semestrów).
 - `zapas_do_50` > 0: tyle lekcji z rzędu można opuścić i zostać ≥ 50%; < 0: tyle obecności z rzędu brakuje do 50%.
 - Średnia ważona tylko z ocen 1–6 z kategorii liczonych do średniej; `+` = +0,5, `-` = −0,25 (zmienisz w opcjach).
 
