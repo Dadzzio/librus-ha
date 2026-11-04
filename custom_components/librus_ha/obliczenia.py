@@ -135,9 +135,10 @@ def _podsumuj(licznik: dict[str, Any]) -> dict[str, Any]:
     wynik["procent_bez_zwolnien"] = (
         round(100 * (ob - zw) / (lekcji - zw), 1) if lekcji - zw > 0 else None
     )
-    # > 0: tyle lekcji z rzędu można jeszcze opuścić i mieć >= 50%;
-    # < 0: tyle obecności z rzędu brakuje do 50%
-    wynik["zapas_do_50"] = 2 * ob - lekcji
+    # do klasyfikacji trzeba mieć PONAD 50% (50% + 1);
+    # >= 0: tyle lekcji z rzędu można jeszcze opuścić i dalej mieć > 50%;
+    # < 0: tyle obecności z rzędu brakuje, żeby mieć > 50%
+    wynik["zapas_do_50"] = 2 * ob - lekcji - 1
     return wynik
 
 
@@ -282,7 +283,7 @@ def dni_nauki(od: date, do: date, wolne: set[date]) -> int:
 
 
 def _mozna_opuscic(zapas: int, pozostalo: int) -> int:
-    # (obecności + pozostałe − k) / (lekcji + pozostałe) >= 50%  <=>  k <= (zapas + pozostałe) / 2
+    # (ob + pozostałe − k) / (lekcji + pozostałe) > 50%  <=>  k <= (2·ob − lekcji − 1 + pozostałe) / 2
     return math.floor((zapas + pozostalo) / 2)
 
 

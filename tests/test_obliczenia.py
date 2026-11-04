@@ -83,7 +83,7 @@ class TestFrekwencja(unittest.TestCase):
         self.assertEqual(m["spoznienia"], 1)
         self.assertEqual(m["usprawiedliwione"], 3)
         self.assertEqual(m["procent"], 70.0)
-        self.assertEqual(m["zapas_do_50"], 4)
+        self.assertEqual(m["zapas_do_50"], 3)
 
     def test_wf_zwolnienia(self):
         w = self.f["przedmioty"]["wychowanie_fizyczne"]
@@ -92,7 +92,7 @@ class TestFrekwencja(unittest.TestCase):
         self.assertEqual(w["obecnosci"], 3)
         self.assertEqual(w["procent"], 75.0)
         self.assertEqual(w["procent_bez_zwolnien"], 50.0)
-        self.assertEqual(w["zapas_do_50"], 2)
+        self.assertEqual(w["zapas_do_50"], 1)
 
     def test_razem_i_rok(self):
         self.assertEqual(self.f["razem"]["lekcji"], 14)
@@ -130,12 +130,12 @@ class TestPrognoza(unittest.TestCase):
         self.assertEqual(p["dni_nauki_do_konca_semestru"], 3)
         m = f["przedmioty"]["matematyka"]
         self.assertEqual(m["pozostalo_lekcji_semestr"], 6)
-        # zapas 4 (7 obecności z 10) + 6 pozostałych => (4 + 6) / 2 = 5
-        self.assertEqual(m["mozna_opuscic_semestr"], 5)
+        # 7 obecności z 10, zostaje 6: opuszczając 4 -> 9/16 > 50%, opuszczając 5 -> 8/16 = 50% (za mało)
+        self.assertEqual(m["mozna_opuscic_semestr"], 4)
         # rok: 19–30.10 = 10 dni nauki więcej => 3+10 = 13 dni, 26 lekcji; rok ma też wpis z sem. 0
         self.assertEqual(p["dni_nauki_do_konca_roku"], 13)
         self.assertEqual(m["rok"]["lekcji"], 11)
-        self.assertEqual(m["mozna_opuscic_rok"], (2 * 7 - 11 + 26) // 2)
+        self.assertEqual(m["mozna_opuscic_rok"], (2 * 7 - 11 - 1 + 26) // 2)
 
     def test_wielkanoc(self):
         from datetime import date
