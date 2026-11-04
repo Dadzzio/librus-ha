@@ -182,6 +182,20 @@ class TestOceny(unittest.TestCase):
         self.assertEqual(m["srednia"], 3.25)  # "0" (brak oceny) pominięte
         self.assertTrue(all(o["liczona"] for o in m["oceny"]))
 
+    def test_zadna_ocena_nie_liczona(self):
+        dane = {
+            **DANE,
+            "grades": {
+                "Grades": [
+                    {"Id": 1, "Subject": {"Id": 10}, "Category": {"Id": 1}, "Grade": "3", "Semester": 1, "IsConstituent": False},
+                    {"Id": 2, "Subject": {"Id": 10}, "Category": {"Id": 2}, "Grade": "5", "Semester": 1, "IsConstituent": False},
+                ]
+            },
+        }
+        m = obliczenia.oceny(dane)["matematyka"]
+        self.assertFalse(any(o["liczona"] for o in m["oceny"]))
+        self.assertEqual(m["srednia"], 3.5)  # wagi 3 i 1: (3*3 + 5*1) / 4
+
     def test_slug(self):
         self.assertEqual(obliczenia.slug("Język polski"), "jezyk_polski")
         self.assertEqual(obliczenia.slug("bezpieczeństwo i Internet wszechrzeczy"), "bezpieczenstwo_i_internet_wszechrzeczy")

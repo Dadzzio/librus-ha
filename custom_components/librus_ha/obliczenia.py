@@ -339,7 +339,10 @@ def wartosc_oceny(ocena: str, plus: float = 0.5, minus: float = 0.25) -> float |
 
 
 def _srednia(oceny: list[dict[str, Any]]) -> float | None:
-    licz = [o for o in oceny if o["liczona"] and o["wartosc"] is not None and o["waga"] > 0]
+    z_wartoscia = [o for o in oceny if o["wartosc"] is not None and o["waga"] > 0]
+    # szkoła może wyłączyć średnie (żadna ocena nie jest liczona) – wtedy liczymy
+    # ze wszystkich ocen, jak LibrusPro
+    licz = [o for o in z_wartoscia if o["liczona"]] or z_wartoscia
     suma_wag = sum(o["waga"] for o in licz)
     if not suma_wag:
         return None
