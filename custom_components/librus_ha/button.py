@@ -30,4 +30,4 @@ class LibrusOdswiez(LibrusEncja, ButtonEntity):
         return True
 
     async def async_press(self) -> None:
-        await self.coordinator.async_refresh()
+        await self.coordinator.async_odswiez_recznie()

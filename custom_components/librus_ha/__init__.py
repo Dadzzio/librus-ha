@@ -18,12 +18,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LibrusConfigEntry) -> bo
     await koordynator.async_config_entry_first_refresh()
     entry.runtime_data = koordynator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    entry.async_on_unload(entry.add_update_listener(_przeladuj))
     return True
-
-
-async def _przeladuj(hass: HomeAssistant, entry: LibrusConfigEntry) -> None:
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: LibrusConfigEntry) -> bool:
@@ -35,4 +30,5 @@ async def async_remove_entry(hass: HomeAssistant, entry: LibrusConfigEntry) -> N
 
     from .const import DOMAIN
 
-    await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.widziane").async_remove()
+    for nazwa in ("widziane", "dane"):
+        await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.{nazwa}").async_remove()

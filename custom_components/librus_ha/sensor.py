@@ -102,6 +102,7 @@ class LibrusFrekwencja(LibrusEncja, SensorEntity):
             "przedmioty": przedmioty,
             "ostatnie_wpisy": f.get("wpisy", [])[:15],
             "aktualizacja": (self.coordinator.data or {}).get("aktualizacja"),
+            "blad": (self.coordinator.data or {}).get("blad"),
         }
 
 

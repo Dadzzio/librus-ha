@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from . import obliczenia
-from .api import LibrusApi, LibrusBlad, LibrusBladLogowania
+from .api import LibrusApi, LibrusBlad, LibrusBladLogowania, LibrusLimit
 from .const import (
     CONF_INTERWAL_DZIEN,
     CONF_INTERWAL_NOC,
@@ -33,6 +33,10 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 WERSJA_MAGAZYNU = 1
+MAKS_PRZERWA = timedelta(hours=6)  # najdłuższy odstęp przy kolejnych błędach
+PRZERWA_PO_LIMICIE = timedelta(minutes=30)  # pierwszy odstęp po blokadzie Librusa
+WAZNOSC_ZAPISANYCH = timedelta(hours=48)  # jak długo pokazujemy ostatnie dane mimo błędów
+PRZERWA_RECZNA = timedelta(minutes=5)  # przycisk „Odśwież” w czasie błędów
 
 
 class LibrusKoordynator(DataUpdateCoordinator[dict[str, Any]]):
@@ -51,11 +55,16 @@ class LibrusKoordynator(DataUpdateCoordinator[dict[str, Any]]):
             hass, WERSJA_MAGAZYNU, f"{DOMAIN}.{entry.entry_id}.widziane"
         )
         self._widziane: dict[str, set[str]] | None = None
+        self._dane_zapis: Store[dict[str, Any]] = Store(
+            hass, WERSJA_MAGAZYNU, f"{DOMAIN}.{entry.entry_id}.dane"
+        )
+        self._bledy = 0
+        self._ostatnia_proba: datetime | None = None
 
     def _opcja(self, klucz: str, domyslna: Any) -> Any:
         return self.config_entry.options.get(klucz, domyslna)
 
-    def _ustaw_interwal(self) -> None:
+    def _interwal_normalny(self) -> timedelta:
         teraz = dt_util.now()
         dzien = teraz.weekday() < 5 and 7 <= teraz.hour < 17
         minuty = (
@@ -63,16 +72,68 @@ class LibrusKoordynator(DataUpdateCoordinator[dict[str, Any]]):
             if dzien
             else self._opcja(CONF_INTERWAL_NOC, DOMYSLNY_INTERWAL_NOC)
         )
-        self.update_interval = timedelta(minutes=int(minuty))
+        return timedelta(minutes=int(minuty))
+
+    def _po_bledzie(self, ex: LibrusBlad) -> None:
+        """Wydłuża odstęp między zapytaniami: 1×, 2×, 4×, … (do 6 h); po blokadzie od 30 min."""
+        self._bledy += 1
+        przerwa = self._interwal_normalny() * 2 ** min(self._bledy - 1, 6)
+        if isinstance(ex, LibrusLimit):
+            przerwa = max(przerwa, PRZERWA_PO_LIMICIE * 2 ** min(self._bledy - 1, 4))
+            if ex.ponow_za:
+                przerwa = max(przerwa, timedelta(seconds=ex.ponow_za))
+        self.update_interval = min(przerwa, MAKS_PRZERWA)
+        _LOGGER.warning(
+            "Librus: błąd nr %d z rzędu (%s), następna próba za %s",
+            self._bledy,
+            ex,
+            self.update_interval,
+        )
+
+    async def _ostatnie_dane(self, ex: LibrusBlad) -> dict[str, Any]:
+        """Ostatnie udane dane (z pamięci albo z dysku), o ile nie są za stare."""
+        dane = self.data or await self._dane_zapis.async_load()
+        if dane:
+            kiedy = dt_util.parse_datetime(dane.get("aktualizacja") or "")
+            if kiedy and dt_util.now() - kiedy < WAZNOSC_ZAPISANYCH:
+                return {**dane, "blad": str(ex)[:300], "bledy_z_rzedu": self._bledy}
+        raise UpdateFailed(str(ex)) from ex
+
+    async def async_odswiez_recznie(self) -> None:
+        """Przycisk: nowa próba od razu i od nowa stałe dane (przedmioty, plan itd.).
+
+        Gdy Librus właśnie odmawia, kolejne wciśnięcia tylko przedłużają blokadę –
+        wtedy najwyżej jedna próba na 5 minut.
+        """
+        teraz = dt_util.utcnow()
+        if (
+            self._bledy
+            and self._ostatnia_proba
+            and teraz - self._ostatnia_proba < PRZERWA_RECZNA
+        ):
+            _LOGGER.warning(
+                "Librus: pomijam ręczne odświeżenie – ostatnia próba %s nie udała się, "
+                "następna możliwa po %s",
+                self._ostatnia_proba,
+                self._ostatnia_proba + PRZERWA_RECZNA,
+            )
+            return
+        self.api.wyczysc_stale()
+        await self.async_refresh()
 
     async def _async_update_data(self) -> dict[str, Any]:
-        self._ustaw_interwal()
+        self._ostatnia_proba = dt_util.utcnow()
         try:
             surowe = await self.hass.async_add_executor_job(self.api.pobierz_wszystko)
         except LibrusBladLogowania as ex:
             raise ConfigEntryAuthFailed(str(ex)) from ex
         except LibrusBlad as ex:
-            raise UpdateFailed(str(ex)) from ex
+            self._po_bledzie(ex)
+            return await self._ostatnie_dane(ex)
+        if self._bledy:
+            _LOGGER.info("Librus: znów działa po %d błędach", self._bledy)
+        self._bledy = 0
+        self.update_interval = self._interwal_normalny()
 
         frek = obliczenia.frekwencja(surowe)
         frek["prognoza"] = obliczenia.prognoza(surowe, frek, dt_util.now().date())
@@ -97,6 +158,7 @@ class LibrusKoordynator(DataUpdateCoordinator[dict[str, Any]]):
             "aktualizacja": dt_util.now().isoformat(),
         }
         await self._zglos_nowosci(dane)
+        await self._dane_zapis.async_save(dane)
         return dane
 
     async def _zglos_nowosci(self, dane: dict[str, Any]) -> None:

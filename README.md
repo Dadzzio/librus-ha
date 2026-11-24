@@ -57,6 +57,17 @@ actions:
 Settings → Devices & services → Librus HA → **Configure**: odpytywanie w dni robocze 7–17 (domyślnie 15 min)
 i w pozostałym czasie (120 min), wartość plusa i minusa.
 
+## Gdy Librus nie odpowiada
+
+- Przy błędzie (sieć, DNS, przerwa techniczna, blokada logowania „Wystąpił błąd, spróbuj ponownie”)
+  encje **nie** znikają: pokazują ostatnie udane dane (do 48 h, także po restarcie HA),
+  a atrybut `blad` w `sensor.szkola_frekwencja` mówi, co poszło nie tak.
+- Kolejne próby są coraz rzadsze (do 6 h), po blokadzie Librusa od 30 min.
+- Ponowne podanie hasła HA pokaże tylko przy jawnym „złym loginie/haśle”.
+- Stałe dane (przedmioty, plan, typy frekwencji, kategorie ocen, klasa, dni wolne) pobierane raz na dobę;
+  co cykl idą tylko frekwencja i oceny. Przycisk „Odśwież” pobiera wszystko od nowa,
+  ale w czasie błędów najwyżej raz na 5 min.
+
 ## Testy
 
 ```sh
